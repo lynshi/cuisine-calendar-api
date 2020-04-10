@@ -8,22 +8,22 @@ import (
 )
 
 type getRecipeResponse struct {
-	id   int
-	name string
+	RecipeId int
+	Name     string
 }
 
 func getRecipe(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	id, err := strconv.Atoi(vars["id"])
+	recipeId, err := strconv.Atoi(vars["recipeId"])
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	response := &getRecipeResponse{
-		id:   id,
-		name: "test",
+		RecipeId: recipeId,
+		Name:     "test",
 	}
 
 	respondWithJSON(w, http.StatusOK, response)

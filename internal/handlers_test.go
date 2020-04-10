@@ -27,8 +27,8 @@ func TestGetRecipe(t *testing.T) {
 	// Check the response body is what we expect.
 	result := getRecipeResponse{}
 	expected := &getRecipeResponse{
-		id:   1,
-		name: "test",
+		RecipeId: 1,
+		Name:     "test",
 	}
 
 	err = json.Unmarshal(response.Body.Bytes(), &result)
@@ -40,6 +40,16 @@ func TestGetRecipe(t *testing.T) {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			response.Body.String(), expected)
 	}
+}
+
+func TestGetRecipeStringId(t *testing.T) {
+	req, err := http.NewRequest("GET", "/recipe/fail", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {

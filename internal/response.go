@@ -6,7 +6,7 @@ import (
 )
 
 type errorResponse struct {
-	message string
+	Message string
 }
 
 func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
@@ -23,7 +23,7 @@ func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{})
 
 func respondWithError(w http.ResponseWriter, statusCode int, err error) {
 	response, _ := json.Marshal(errorResponse{
-		message: err.Error(),
+		Message: err.Error(),
 	})
 
 	w.Header().Set("Content-Type", "application/json")
