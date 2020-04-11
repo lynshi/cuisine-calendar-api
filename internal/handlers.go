@@ -8,8 +8,12 @@ import (
 )
 
 type getRecipeResponse struct {
-	RecipeId int
-	Name     string
+	RecipeId     int
+	Name         string
+	Instructions string
+	Ingredients  string
+	Quantity     float64
+	QuantityUnit string
 }
 
 func getRecipe(w http.ResponseWriter, r *http.Request) {

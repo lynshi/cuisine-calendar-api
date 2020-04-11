@@ -6,16 +6,28 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/rs/zerolog"
 )
 
 var testApp App
 
 func TestMain(m *testing.M) {
-	testApp.initialize()
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	testApp.initializeRouter()
 	os.Exit(m.Run())
 }
 
 func TestGetRecipe(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	testApp.db = db
+
 	req, err := http.NewRequest("GET", "/recipe/1", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -24,7 +36,6 @@ func TestGetRecipe(t *testing.T) {
 	response := executeRequest(req)
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	// Check the response body is what we expect.
 	result := getRecipeResponse{}
 	expected := &getRecipeResponse{
 		RecipeId: 1,
