@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jinzhu/gorm"
 	"github.com/rs/zerolog"
 )
 
@@ -19,14 +20,31 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestGetRecipe(t *testing.T) {
+func createMockDB(t *testing.T) *sqlmock.Sqlmock {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
 
-	testApp.db = db
+	var gdb *gorm.DB
+	gdb, err = gorm.Open("postgres", db)
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a mock GORM connection", err)
+	}
+
+	testApp.db = gdb
+
+	t.Cleanup(func() {
+		gdb.Close()
+		db.Close()
+		testApp.db = nil
+	})
+
+	return &mock
+}
+
+func TestGetRecipe(t *testing.T) {
+	createMockDB(t) // mock = createMockDB(t)
 
 	req, err := http.NewRequest("GET", "/recipe/1", nil)
 	if err != nil {
