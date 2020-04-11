@@ -1,11 +1,11 @@
 package api
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,7 +23,7 @@ func RunCuisineCalendarAPI(debug bool) {
 
 type App struct {
 	router *mux.Router
-	db     *sql.DB
+	db     *gorm.DB
 	debug  bool
 }
 
