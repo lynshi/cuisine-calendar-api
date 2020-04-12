@@ -1,4 +1,4 @@
-package api
+package database
 
 import (
 	"fmt"
@@ -8,14 +8,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (a *App) initializeDatabaseConnection(dbname, user, password, host string, port int) {
+type DB struct {
+	*gorm.DB
+}
+
+func initializeDatabaseConnection(dbname, user, password, host string, port int) DB {
 	log.Info().Msg(fmt.Sprintf("Connecting to database %v", dbname))
 
 	connectionString :=
 		fmt.Sprintf("dbname=%s user=%s password=%s host=%s port=%d", dbname, user, password, host, port)
-	var err error
-	a.db, err = gorm.Open("postgres", connectionString)
+	db, err := gorm.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
+
+	return DB{db}
 }
