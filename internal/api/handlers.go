@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
+	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
 type getRecipeResponse struct {
@@ -17,9 +17,9 @@ type getRecipeResponse struct {
 }
 
 func getRecipe(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	params := router.GetParams(r)
 
-	recipeId, err := strconv.Atoi(vars["recipeId"])
+	recipeId, err := strconv.Atoi(params.ByName("recipeId"))
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err)
 		return

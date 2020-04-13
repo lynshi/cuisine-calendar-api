@@ -10,13 +10,20 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jinzhu/gorm"
 	"github.com/rs/zerolog"
+
+	"github.com/lynshi/cuisine-calendar-api/internal/database"
+	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
-var testApp App
+var testApp appContext
 
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	testApp.initializeRouter()
+
+	testApp.debug = true
+	testApp.router = router.NewRouter()
+	testApp.setupRouter()
+
 	os.Exit(m.Run())
 }
 
@@ -32,7 +39,9 @@ func createMockDB(t *testing.T) *sqlmock.Sqlmock {
 		t.Fatalf("an error '%s' was not expected when opening a mock GORM connection", err)
 	}
 
-	testApp.db = gdb
+	testApp.db = &database.DB{
+		DB: gdb,
+	}
 
 	t.Cleanup(func() {
 		gdb.Close()
@@ -78,7 +87,7 @@ func TestGetRecipeStringId(t *testing.T) {
 	}
 
 	response := executeRequest(req)
-	checkResponseCode(t, http.StatusNotFound, response.Code)
+	checkResponseCode(t, http.StatusBadRequest, response.Code)
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
