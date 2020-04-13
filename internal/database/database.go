@@ -12,7 +12,8 @@ type DB struct {
 	*gorm.DB
 }
 
-func initializeDatabaseConnection(dbname, user, password, host string, port int) DB {
+// InitializeDatabaseConnection opens a connection to the given database.
+func InitializeDatabaseConnection(dbname, user, password, host string, port int) *DB {
 	log.Info().Msg(fmt.Sprintf("Connecting to database %v", dbname))
 
 	connectionString :=
@@ -22,5 +23,5 @@ func initializeDatabaseConnection(dbname, user, password, host string, port int)
 		log.Fatal().Msg(err.Error())
 	}
 
-	return DB{db}
+	return &DB{db}
 }
