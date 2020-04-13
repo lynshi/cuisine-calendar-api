@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/justinas/alice"
 	"github.com/rs/zerolog/log"
 
 	"github.com/lynshi/cuisine-calendar-api/internal/database"
@@ -38,5 +39,6 @@ func RunCuisineCalendarAPI(debug bool) {
 func (a *appContext) setupRouter() {
 	log.Info().Msg("Initializing router and adding handler functions")
 
-	a.router.Get("/recipe/:recipeId", getRecipe)
+	commonHandlers := alice.New(loggingHandler)
+	a.router.Get("/recipe/:recipeId", commonHandlers.ThenFunc(getRecipe))
 }

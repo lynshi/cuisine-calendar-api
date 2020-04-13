@@ -65,7 +65,7 @@ func TestGetRecipe(t *testing.T) {
 
 	result := getRecipeResponse{}
 	expected := &getRecipeResponse{
-		RecipeId: 1,
+		RecipeID: 1,
 		Name:     "test",
 	}
 

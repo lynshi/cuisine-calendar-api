@@ -19,10 +19,14 @@ func NewRouter() *Router {
 	return &Router{httprouter.New()}
 }
 
-func (r *Router) Get(path string, handler http.HandlerFunc) {
-	r.HandlerFunc(http.MethodGet, path, handler)
+func (r *Router) Get(path string, handler http.Handler) {
+	r.Handler(http.MethodGet, path, handler)
 }
 
 func GetParams(r *http.Request) httprouter.Params {
 	return httprouter.ParamsFromContext(r.Context())
+}
+
+func GetParamByName(params *httprouter.Params, name string) string {
+	return params.ByName(name)
 }
