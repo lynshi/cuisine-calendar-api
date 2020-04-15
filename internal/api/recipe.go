@@ -18,7 +18,7 @@ type getRecipeResponse struct {
 	Owner       string      `json:"owner"`
 }
 
-func getRecipe(w http.ResponseWriter, r *http.Request) {
+func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
 	params := router.GetParams(r)
 
 	recipeID, err := strconv.Atoi(router.GetParamByName(&params, "recipeId"))
@@ -27,10 +27,21 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response := app.retrieveRecipeByID(recipeID)
+	respondWithJSON(w, http.StatusOK, response)
+}
+
+func (app *appContext) retrieveRecipeByID(id int) *getRecipeResponse {
+	recipe := app.db.GetRecipeByID(id)
 	response := &getRecipeResponse{
-		RecipeID: recipeID,
-		Name:     "test",
+		RecipeID:    recipe.ID,
+		Name:        recipe.Name,
+		Servings:    recipe.Servings,
+		Ingredients: recipe.Ingredients,
+		CreatedAt:   recipe.CreatedAt,
+		UpdatedAt:   recipe.UpdatedAt,
+		Owner:       recipe.Owner,
 	}
 
-	respondWithJSON(w, http.StatusOK, response)
+	return response
 }

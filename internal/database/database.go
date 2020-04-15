@@ -20,8 +20,14 @@ func InitializeDatabaseConnection(dbname, user, password, host string, port int)
 		fmt.Sprintf("dbname=%s user=%s password=%s host=%s port=%d", dbname, user, password, host, port)
 	db, err := gorm.Open("postgres", connectionString)
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Msg("Could not connect to database")
 	}
 
 	return &DB{db}
+}
+
+func (db *DB) GetRecipeByID(id int) *Recipe {
+	var recipe Recipe
+	db.First(&recipe, id)
+	return &recipe
 }

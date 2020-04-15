@@ -31,7 +31,7 @@ func RunCuisineCalendarAPI(debug bool) {
 
 	app.setupRouter()
 
-	log.Fatal().Err(http.ListenAndServe(":8080", app.router)).Msg("")
+	log.Fatal().Err(http.ListenAndServe(":8080", app.router)).Msg("Server exited")
 }
 
 func (app *appContext) setupRouter() {
