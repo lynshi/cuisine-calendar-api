@@ -1,59 +1,97 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/ory/dockertest"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/lynshi/cuisine-calendar-api/internal/database"
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
-var testApp appContext
+var (
+	testApp appContext
+
+	pgURL *url.URL
+)
 
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	testApp.debug = true
 	testApp.router = router.NewRouter()
 	testApp.setupRouter()
 
-	os.Exit(m.Run())
-}
+	// Many thanks to https://github.com/johanbrandhorst/grpc-postgres/blob/2b12f7a2b44623efcbc627b896f242da0c7462d6/users/users_test.go#L29.
+	code := 0
+	defer func() {
+		os.Exit(code)
+	}()
 
-func createMockDB(t *testing.T) *sqlmock.Sqlmock {
-	db, mock, err := sqlmock.New()
+	var db *sql.DB
+	var err error
+	pool, err := dockertest.NewPool("")
 	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+		log.Fatal().Err(err).Msg("Could not connect to Docker")
 	}
+
+	dbname := "testdatabase"
+	resource, err := pool.Run("postgres", "9.6", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=" + dbname})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not start resource")
+	}
+
+	if err = pool.Retry(func() error {
+		var err error
+		db, err = sql.Open("postgres", fmt.Sprintf("postgres://postgres:secret@localhost:%s/%s?sslmode=disable", resource.GetPort("5432/tcp"), dbname))
+		if err != nil {
+			return err
+		}
+		return db.Ping()
+	}); err != nil {
+		log.Fatal().Err(err).Msg("Could not connect to database")
+	}
+
+	defer func() {
+		err = pool.Purge(resource)
+		if err != nil {
+			log.Error().Err(err).Msg("Could not purge resource")
+		}
+	}()
 
 	var gdb *gorm.DB
 	gdb, err = gorm.Open("postgres", db)
 	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a mock GORM connection", err)
+		log.Fatal().Err(err).Msg("Could not open connection from Gorm")
 	}
 
 	testApp.db = &database.DB{
 		DB: gdb,
 	}
 
-	t.Cleanup(func() {
-		gdb.Close()
-		db.Close()
-		testApp.db = nil
-	})
-
-	return &mock
+	code = m.Run()
 }
 
 func TestGetRecipe(t *testing.T) {
-	createMockDB(t) // mock = createMockDB(t)
+	id := 1
+	name := "test recipe item"
+	servings := 2
+	created := time.Now()
+	updated := time.Now()
+	owner := "me"
 
 	req, err := http.NewRequest("GET", "/recipe/1", nil)
 	if err != nil {
@@ -63,10 +101,17 @@ func TestGetRecipe(t *testing.T) {
 	response := executeRequest(req)
 	checkResponseCode(t, http.StatusOK, response.Code)
 
+	ingredients := make(map[string]int)
+	ingredients["salt"] = 1
+
 	result := getRecipeResponse{}
 	expected := &getRecipeResponse{
-		RecipeID: 1,
-		Name:     "test",
+		RecipeID:  id,
+		Name:      name,
+		Servings:  servings,
+		CreatedAt: created,
+		UpdatedAt: updated,
+		Owner:     owner,
 	}
 
 	err = json.Unmarshal(response.Body.Bytes(), &result)

@@ -17,14 +17,12 @@ type appContext struct {
 	debug  bool
 }
 
-var app appContext
-
 // RunCuisineCalendarAPI is the entry point for the API.
 func RunCuisineCalendarAPI(debug bool) {
 	log.Info().Msg("Starting Cuisine Calendar API")
 	log.Info().Msg(fmt.Sprintf("Debug is %v", debug))
 
-	app = appContext{
+	app := appContext{
 		router: router.NewRouter(),
 		db:     database.InitializeDatabaseConnection("", "", "", "", 5432),
 		debug:  debug,
@@ -33,12 +31,12 @@ func RunCuisineCalendarAPI(debug bool) {
 
 	app.setupRouter()
 
-	log.Fatal().Msg(http.ListenAndServe(":8080", app.router).Error())
+	log.Fatal().Err(http.ListenAndServe(":8080", app.router)).Msg("")
 }
 
-func (a *appContext) setupRouter() {
+func (app *appContext) setupRouter() {
 	log.Info().Msg("Initializing router and adding handler functions")
 
 	commonHandlers := alice.New(loggingHandler)
-	a.router.Get("/recipe/:recipeId", commonHandlers.ThenFunc(getRecipe))
+	app.router.Get("/recipe/:recipeId", commonHandlers.ThenFunc(app.getRecipe))
 }
