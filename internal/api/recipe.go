@@ -1,10 +1,11 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
@@ -13,8 +14,6 @@ type getRecipeResponse struct {
 	Name        string      `json:"name"`
 	Servings    int         `json:"servings"`
 	Ingredients interface{} `json:"ingredients"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
 	Owner       string      `json:"owner"`
 }
 
@@ -27,21 +26,36 @@ func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := app.retrieveRecipeByID(recipeID)
+	var response getRecipeResponse
+	response, err = app.retrieveRecipeByID(recipeID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, response)
 }
 
-func (app *appContext) retrieveRecipeByID(id int) *getRecipeResponse {
+func (app *appContext) retrieveRecipeByID(id int) (getRecipeResponse, error) {
 	recipe := app.db.GetRecipeByID(id)
-	response := &getRecipeResponse{
+	ingredients, err := parseIngredientsJSONB(&recipe.Ingredients)
+	if err != nil {
+		return getRecipeResponse{}, err
+	}
+
+	response := getRecipeResponse{
 		RecipeID:    recipe.ID,
 		Name:        recipe.Name,
 		Servings:    recipe.Servings,
-		Ingredients: recipe.Ingredients,
-		CreatedAt:   recipe.CreatedAt,
-		UpdatedAt:   recipe.UpdatedAt,
+		Ingredients: ingredients,
 		Owner:       recipe.Owner,
 	}
 
-	return response
+	return response, nil
+}
+
+func parseIngredientsJSONB(jsonb *postgres.Jsonb) (map[string]int, error) {
+	var ingredients map[string]int
+	err := json.Unmarshal(jsonb.RawMessage, &ingredients)
+	return ingredients, err
 }

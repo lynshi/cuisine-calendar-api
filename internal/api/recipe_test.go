@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/ory/dockertest"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -82,6 +83,8 @@ func TestMain(m *testing.M) {
 		DB: gdb,
 	}
 
+	testApp.db.AutoMigrate(&database.Recipe{})
+
 	code = m.Run()
 }
 
@@ -89,9 +92,23 @@ func TestGetRecipe(t *testing.T) {
 	id := 1
 	name := "test recipe item"
 	servings := 2
+	ingredients := json.RawMessage(`{"salt": 1}`)
 	created := time.Now()
 	updated := time.Now()
 	owner := "me"
+	permissions := "everyone"
+
+	dbItem := database.Recipe{
+		ID:          id,
+		Name:        name,
+		Servings:    servings,
+		Ingredients: postgres.Jsonb{RawMessage: ingredients},
+		CreatedAt:   created,
+		UpdatedAt:   updated,
+		Owner:       owner,
+		Permissions: permissions,
+	}
+	testApp.db.Create(&dbItem)
 
 	req, err := http.NewRequest("GET", "/recipe/1", nil)
 	if err != nil {
@@ -101,17 +118,22 @@ func TestGetRecipe(t *testing.T) {
 	response := executeRequest(req)
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	ingredients := make(map[string]int)
-	ingredients["salt"] = 1
+	var expectedIngredients map[string]int
+	expectedIngredients, err = parseIngredientsJSONB(
+		&postgres.Jsonb{RawMessage: ingredients},
+	)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	result := getRecipeResponse{}
-	expected := &getRecipeResponse{
-		RecipeID:  id,
-		Name:      name,
-		Servings:  servings,
-		CreatedAt: created,
-		UpdatedAt: updated,
-		Owner:     owner,
+	expected := getRecipeResponse{
+		RecipeID:    id,
+		Name:        name,
+		Ingredients: expectedIngredients,
+		Servings:    servings,
+		Owner:       owner,
 	}
 
 	err = json.Unmarshal(response.Body.Bytes(), &result)
@@ -119,9 +141,11 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if result != *expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			response.Body.String(), expected)
+	if reflect.DeepEqual(result, expected) {
+		t.Errorf(
+			"handler returned unexpected body: got %v want %v",
+			result, expected,
+		)
 	}
 }
 
