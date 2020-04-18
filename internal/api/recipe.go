@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
@@ -14,6 +15,8 @@ type getRecipeResponse struct {
 	Name        string      `json:"name"`
 	Servings    int         `json:"servings"`
 	Ingredients interface{} `json:"ingredients"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 	Owner       string      `json:"owner"`
 }
 
@@ -48,6 +51,8 @@ func (app *appContext) retrieveRecipeByID(id int) (getRecipeResponse, error) {
 		Name:        recipe.Name,
 		Servings:    recipe.Servings,
 		Ingredients: ingredients,
+		CreatedAt:   recipe.CreatedAt,
+		UpdatedAt:   recipe.UpdatedAt,
 		Owner:       recipe.Owner,
 	}
 

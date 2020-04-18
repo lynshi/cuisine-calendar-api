@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/ory/dockertest"
@@ -133,6 +133,8 @@ func TestGetRecipe(t *testing.T) {
 		Name:        name,
 		Ingredients: expectedIngredients,
 		Servings:    servings,
+		CreatedAt:   created,
+		UpdatedAt:   updated,
 		Owner:       owner,
 	}
 
@@ -141,7 +143,7 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reflect.DeepEqual(result, expected) {
+	if cmp.Equal(result, expected) {
 		t.Errorf(
 			"handler returned unexpected body: got %v want %v",
 			result, expected,
