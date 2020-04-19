@@ -1,0 +1,28 @@
+# Go
+# Build your Go project.
+# Add steps that test, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/go
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  GOPATH: '$(Agent.BuildDirectory)/gopath' # Go workspace path
+  GOROOT: '$(Agent.BuildDirectory)/go' # Go installation path
+  GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
+
+steps:
+- script: |
+    wget "https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz" --output-document "$(Agent.BuildDirectory)/go1.14.2.tar.gz"
+    tar -C '$(Agent.BuildDirectory)' -xzf "$(Agent.BuildDirectory)/go1.14.2.tar.gz"
+  displayName: 'Install Go 1.14'
+
+- script: |
+    go test -coverprofile cover.out ./...
+    bash <(curl -s https://codecov.io/bash)
+  workingDirectory: '$(modulePath)'
+  displayName: 'Get dependencies, then build'
