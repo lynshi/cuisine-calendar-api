@@ -19,12 +19,12 @@ steps:
 - script: |
     wget "https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz" --output-document "$(Agent.BuildDirectory)/go1.14.2.tar.gz"
     tar -C '$(Agent.BuildDirectory)' -xzf "$(Agent.BuildDirectory)/go1.14.2.tar.gz"
-    mv $(system.defaultWorkingDirectory)/* $(modulePath)
-  displayName: 'Set up Go workspace'
+  displayName: 'Instal Go 1.14'
 
 - script: |
-    go build ./...
-  workingDirectory: '$(System.DefaultWorkingDirectory)'
+    go get -v -t -d ./...
+  workingDirectory: '$(modulePath)'
+  displayName: 'Install module'
 
 - script: |
     go test -coverprofile cover.out ./...
