@@ -16,3 +16,5 @@ steps:
     bash <(curl -s https://codecov.io/bash) -f cover.out
   workingDirectory: '$(system.defaultWorkingDirectory)'
   displayName: 'Run unit tests'
+  env:
+    CODECOV_TOKEN: $(codecovToken)
