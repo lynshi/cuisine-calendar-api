@@ -31,7 +31,7 @@ steps:
   displayName: 'Set up the Go workspace'
 
 - script: |
-    go test -coverprofile=coverage.txt -covermode=atomic ./...
-    bash <(curl -s https://codecov.io/bash)
+    go test -coverprofile=cover.out ./...
+    bash <(curl -s https://codecov.io/bash) -f cover.out
   workingDirectory: '$(modulePath)'
   displayName: 'Run unit tests'
