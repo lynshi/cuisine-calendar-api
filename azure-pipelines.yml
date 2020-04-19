@@ -17,10 +17,7 @@ variables:
 
 steps:
 - script: |
-    echo "GOBIN $(GOBIN)"
-    echo "GOPATH $(GOPATH)"
-    echo "REPO PATH $(GOPATH)/src/github.com/$(build.repository.name)"
-
+    mkdir -p '$(GOROOT)'
     mkdir -p '$(GOPATH)'
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
