@@ -17,23 +17,36 @@ variables:
 
 steps:
 - script: |
-    wget "https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz" --output-document "$(Agent.BuildDirectory)/go1.14.2.tar.gz"
-    tar -C '$(Agent.BuildDirectory)' -xzf "$(Agent.BuildDirectory)/go1.14.2.tar.gz"
+    echo "GOBIN $(GOBIN)"
+    echo "GOPATH $(GOPATH)"
+    echo "REPO PATH $(GOPATH)/src/github.com/$(build.repository.name)"
+
+    mkdir -p '$(GOPATH)'
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
-    mv !(gopath) '$(modulePath)'
+    echo "Moving $(system.defaultWorkingDirectory)/* To $(modulePath)"
+    mv $(system.defaultWorkingDirectory)/* $(modulePath)
+    shopt -s extglob
+    shopt -s dotglob
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
-  displayName: 'Install Go 1.14 and setup workspace'
+  displayName: 'Set up the Go workspace'
 
 - script: |
-    go get -v -t -d ./...
+    go version
+    if [ -f Gopkg.toml ]; then
+        curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+        dep ensure
+    else
+      echo "ERROR no Gopkg.toml found!"
+      exit 1
+    fi
   workingDirectory: '$(modulePath)'
-  displayName: 'Install module'
+  displayName: 'Install latest Go'
 
 - script: |
     go test -coverprofile cover.out ./...
     bash <(curl -s https://codecov.io/bash)
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
+  displayName: 'Run unit tests'
