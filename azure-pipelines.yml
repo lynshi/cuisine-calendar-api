@@ -9,29 +9,9 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
-variables:
-  GOPATH: '$(Agent.BuildDirectory)/gopath' # Go workspace path
-  GOROOT: '$(Agent.BuildDirectory)/go' # Go installation path
-  GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
-
 steps:
-- script: |
-    mkdir -p '$(GOROOT)'
-    mkdir -p '$(GOPATH)'
-    mkdir -p '$(GOBIN)'
-    mkdir -p '$(GOPATH)/pkg'
-    mkdir -p '$(modulePath)'
-    echo "Moving $(system.defaultWorkingDirectory)/* To $(modulePath)"
-    mv $(system.defaultWorkingDirectory)/* $(modulePath)
-    shopt -s extglob
-    shopt -s dotglob
-    echo '##vso[task.prependpath]$(GOBIN)'
-    echo '##vso[task.prependpath]$(GOROOT)/bin'
-  displayName: 'Set up the Go workspace'
-
 - script: |
     go test -coverprofile=cover.out ./...
     bash <(curl -s https://codecov.io/bash) -f cover.out
-  workingDirectory: '$(modulePath)'
+  workingDirectory: '$(system.defaultWorkingDirectory)'
   displayName: 'Run unit tests'
