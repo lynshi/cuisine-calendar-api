@@ -40,6 +40,10 @@ func (db *DB) createTables() {
 	db.DB.AutoMigrate(&TextInstruction{})
 }
 
+func (db *DB) AddRecipe(recipe *Recipe) {
+	db.Create(recipe)
+}
+
 func (db *DB) GetRecipeByID(id int) *Recipe {
 	var recipe Recipe
 	db.First(&recipe, id)

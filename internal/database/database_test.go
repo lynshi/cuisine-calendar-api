@@ -2,11 +2,15 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/ory/dockertest"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -87,5 +91,41 @@ func TestTablesCreated(t *testing.T) {
 				t.Errorf("Could not find table in database")
 			}
 		})
+	}
+}
+
+var (
+	recipeID          = 5
+	recipeName        = "database test recipe item"
+	recipeServings    = 3
+	recipeIngredients = json.RawMessage(`{"salt": 1}`)
+	recipeCreated     = time.Now().Round(time.Microsecond)
+	recipeUpdated     = time.Now().Round(time.Microsecond)
+	recipeOwner       = "me"
+	recipePermissions = "everyone"
+
+	recipe = Recipe{
+		ID:          recipeID,
+		Name:        recipeName,
+		Servings:    recipeServings,
+		Ingredients: postgres.Jsonb{RawMessage: recipeIngredients},
+		CreatedAt:   recipeCreated,
+		UpdatedAt:   recipeUpdated,
+		Owner:       recipeOwner,
+		Permissions: recipePermissions,
+	}
+)
+
+func TestAddRecipe(t *testing.T) {
+	testDB.AddRecipe(&recipe)
+
+	var result Recipe
+	testDB.Raw("SELECT * FROM recipes WHERE id = ?", recipeID).Scan(&result)
+
+	if !cmp.Equal(recipe, result) {
+		t.Errorf(
+			"handler returned unexpected body: want %+v got %+v",
+			recipe, result,
+		)
 	}
 }
