@@ -18,13 +18,13 @@ type appContext struct {
 }
 
 // RunCuisineCalendarAPI is the entry point for the API.
-func RunCuisineCalendarAPI(debug bool) {
+func RunCuisineCalendarAPI(dbname, user, password, host string, port int, debug bool) {
 	log.Info().Msg("Starting Cuisine Calendar API")
 	log.Info().Msg(fmt.Sprintf("Debug is %v", debug))
 
 	app := appContext{
 		router: router.NewRouter(),
-		db:     database.InitializeDatabaseConnection("", "", "", "", 5432),
+		db:     database.InitializeDatabaseConnection(dbname, user, password, host, port, true),
 		debug:  debug,
 	}
 	defer app.db.Close()

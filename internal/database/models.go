@@ -6,6 +6,7 @@ import (
 	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
+// Recipe models the recipes table.
 type Recipe struct {
 	ID          int
 	Name        string `gorm:"index:recipe_name"`
@@ -17,6 +18,7 @@ type Recipe struct {
 	Permissions string
 }
 
+// TextInstruction models the text_instructions table.
 type TextInstruction struct {
 	ID       int
 	Text     string `gorm:"type:text"`

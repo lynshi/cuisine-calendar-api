@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -24,8 +22,6 @@ import (
 
 var (
 	testApp appContext
-
-	pgURL *url.URL
 )
 
 func TestMain(m *testing.M) {
@@ -36,7 +32,6 @@ func TestMain(m *testing.M) {
 	testApp.router = router.NewRouter()
 	testApp.setupRouter()
 
-	// Many thanks to https://github.com/johanbrandhorst/grpc-postgres/blob/2b12f7a2b44623efcbc627b896f242da0c7462d6/users/users_test.go#L29.
 	code := 0
 	defer func() {
 		os.Exit(code)
@@ -46,13 +41,13 @@ func TestMain(m *testing.M) {
 	var err error
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not connect to Docker")
+		log.Fatal().Err(err).Msg("could not connect to Docker")
 	}
 
 	dbname := "testdatabase"
 	resource, err := pool.Run("postgres", "9.6", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=" + dbname})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start resource")
+		log.Fatal().Err(err).Msg("could not start resource")
 	}
 
 	if err = pool.Retry(func() error {
@@ -63,20 +58,20 @@ func TestMain(m *testing.M) {
 		}
 		return db.Ping()
 	}); err != nil {
-		log.Fatal().Err(err).Msg("Could not connect to database")
+		log.Fatal().Err(err).Msg("could not connect to database")
 	}
 
 	defer func() {
 		err = pool.Purge(resource)
 		if err != nil {
-			log.Error().Err(err).Msg("Could not purge resource")
+			log.Error().Err(err).Msg("could not purge resource")
 		}
 	}()
 
 	var gdb *gorm.DB
 	gdb, err = gorm.Open("postgres", db)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not open connection from Gorm")
+		log.Fatal().Err(err).Msg("could not open connection from Gorm")
 	}
 
 	testApp.db = &database.DB{
@@ -93,8 +88,8 @@ func TestGetRecipe(t *testing.T) {
 	name := "test recipe item"
 	servings := 2
 	ingredients := json.RawMessage(`{"salt": 1}`)
-	created := time.Now()
-	updated := time.Now()
+	created := time.Now().Round(time.Microsecond)
+	updated := time.Now().Round(time.Microsecond)
 	owner := "me"
 	permissions := "everyone"
 
@@ -115,13 +110,11 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	response := executeRequest(req)
+	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusOK, response.Code)
 
 	var expectedIngredients map[string]int
-	expectedIngredients, err = parseIngredientsJSONB(
-		&postgres.Jsonb{RawMessage: ingredients},
-	)
+	expectedIngredients, err = parseIngredientsJSONB(&dbItem.Ingredients)
 
 	if err != nil {
 		t.Fatal(err)
@@ -143,12 +136,22 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if cmp.Equal(result, expected) {
+	if !cmp.Equal(expected, result) {
 		t.Errorf(
-			"handler returned unexpected body: got %v want %v",
-			result, expected,
+			"handler returned unexpected body: want %+v got %+v",
+			expected, result,
 		)
 	}
+}
+
+func TestGetRecipeNonexistentID(t *testing.T) {
+	req, err := http.NewRequest("GET", "/recipe/42", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusInternalServerError, response.Code)
 }
 
 func TestGetRecipeStringId(t *testing.T) {
@@ -157,19 +160,6 @@ func TestGetRecipeStringId(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	response := executeRequest(req)
+	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusBadRequest, response.Code)
-}
-
-func executeRequest(req *http.Request) *httptest.ResponseRecorder {
-	rr := httptest.NewRecorder()
-	testApp.router.ServeHTTP(rr, req)
-
-	return rr
-}
-
-func checkResponseCode(t *testing.T, expected int, actual int) {
-	if expected != actual {
-		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
-	}
 }

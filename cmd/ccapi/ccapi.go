@@ -18,5 +18,5 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	api.RunCuisineCalendarAPI(*debug)
+	api.RunCuisineCalendarAPI("", "", "", "", 5432, *debug)
 }
