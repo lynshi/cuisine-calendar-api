@@ -145,13 +145,13 @@ func TestGetRecipe(t *testing.T) {
 }
 
 func TestGetRecipeNonexistentID(t *testing.T) {
-	req, err := http.NewRequest("GET", "/recipe/fail", nil)
+	req, err := http.NewRequest("GET", "/recipe/42", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusBadRequest, response.Code)
+	checkResponseCode(t, http.StatusInternalServerError, response.Code)
 }
 
 func TestGetRecipeStringId(t *testing.T) {
