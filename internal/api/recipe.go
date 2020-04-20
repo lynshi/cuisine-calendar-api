@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm/dialects/postgres"
+
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
@@ -40,8 +41,13 @@ func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *appContext) retrieveRecipeByID(id int) (getRecipeResponse, error) {
-	recipe := app.db.GetRecipeByID(id)
-	ingredients, err := parseIngredientsJSONB(&recipe.Ingredients)
+	recipe, err := app.db.GetRecipeByID(id)
+	if err != nil {
+		return getRecipeResponse{}, err
+	}
+
+	var ingredients map[string]int
+	ingredients, err = parseIngredientsJSONB(&recipe.Ingredients)
 	if err != nil {
 		return getRecipeResponse{}, err
 	}

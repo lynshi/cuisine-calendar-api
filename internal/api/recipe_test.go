@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -42,13 +41,13 @@ func TestMain(m *testing.M) {
 	var err error
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not connect to Docker")
+		log.Fatal().Err(err).Msg("could not connect to Docker")
 	}
 
 	dbname := "testdatabase"
 	resource, err := pool.Run("postgres", "9.6", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=" + dbname})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start resource")
+		log.Fatal().Err(err).Msg("could not start resource")
 	}
 
 	if err = pool.Retry(func() error {
@@ -59,20 +58,20 @@ func TestMain(m *testing.M) {
 		}
 		return db.Ping()
 	}); err != nil {
-		log.Fatal().Err(err).Msg("Could not connect to database")
+		log.Fatal().Err(err).Msg("could not connect to database")
 	}
 
 	defer func() {
 		err = pool.Purge(resource)
 		if err != nil {
-			log.Error().Err(err).Msg("Could not purge resource")
+			log.Error().Err(err).Msg("could not purge resource")
 		}
 	}()
 
 	var gdb *gorm.DB
 	gdb, err = gorm.Open("postgres", db)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not open connection from Gorm")
+		log.Fatal().Err(err).Msg("could not open connection from Gorm")
 	}
 
 	testApp.db = &database.DB{
@@ -111,7 +110,7 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	response := executeRequest(req)
+	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusOK, response.Code)
 
 	var expectedIngredients map[string]int
@@ -145,25 +144,22 @@ func TestGetRecipe(t *testing.T) {
 	}
 }
 
+func TestGetRecipeNonexistentID(t *testing.T) {
+	req, err := http.NewRequest("GET", "/recipe/fail", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusBadRequest, response.Code)
+}
+
 func TestGetRecipeStringId(t *testing.T) {
 	req, err := http.NewRequest("GET", "/recipe/fail", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	response := executeRequest(req)
+	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusBadRequest, response.Code)
-}
-
-func executeRequest(req *http.Request) *httptest.ResponseRecorder {
-	rr := httptest.NewRecorder()
-	testApp.router.ServeHTTP(rr, req)
-
-	return rr
-}
-
-func checkResponseCode(t *testing.T, expected int, actual int) {
-	if expected != actual {
-		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
-	}
 }
