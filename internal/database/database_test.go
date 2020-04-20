@@ -33,13 +33,13 @@ func TestMain(m *testing.M) {
 	var err error
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not connect to Docker")
+		log.Fatal().Err(err).Msg("could not connect to Docker")
 	}
 
 	dbname := "testdatabase"
 	resource, err := pool.Run("postgres", "9.6", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=" + dbname})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start resource")
+		log.Fatal().Err(err).Msg("could not start resource")
 	}
 
 	if err = pool.Retry(func() error {
@@ -50,13 +50,13 @@ func TestMain(m *testing.M) {
 		}
 		return db.Ping()
 	}); err != nil {
-		log.Fatal().Err(err).Msg("Could not connect to database")
+		log.Fatal().Err(err).Msg("could not connect to database")
 	}
 
 	defer func() {
 		err = pool.Purge(resource)
 		if err != nil {
-			log.Error().Err(err).Msg("Could not purge resource")
+			log.Error().Err(err).Msg("could not purge resource")
 		}
 	}()
 
@@ -66,7 +66,7 @@ func TestMain(m *testing.M) {
 	var port int
 	port, err = strconv.Atoi(resource.GetPort("5432/tcp"))
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not convert port to int")
+		log.Fatal().Err(err).Msg("could not convert port to int")
 	}
 
 	testDB = InitializeDatabaseConnection(dbname, "postgres", "secret", "localhost", port, false)
@@ -88,7 +88,7 @@ func TestTablesCreated(t *testing.T) {
 	for _, tt := range tableExistsTests {
 		t.Run(tt.name, func(t *testing.T) {
 			if testDB.HasTable(tt.in) != tt.out {
-				t.Errorf("Could not find table in database")
+				t.Errorf("could not find table in database")
 			}
 		})
 	}
@@ -127,5 +127,25 @@ func TestAddRecipe(t *testing.T) {
 			"handler returned unexpected body: want %+v got %+v",
 			recipe, result,
 		)
+	}
+}
+
+func TestGetRecipeByID(t *testing.T) {
+	testDB.Raw("INSERT INTO recipes (id) VALUES (?)", recipeID)
+
+	result, err := testDB.GetRecipeByID(recipeID)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	if recipeID != recipe.ID {
+		t.Errorf("expected recipe ID %d, got %d", recipeID, result.ID)
+	}
+}
+
+func TestGetRecipeByIDNonexistentID(t *testing.T) {
+	_, err := testDB.GetRecipeByID(2 * recipeID)
+	if err == nil {
+		t.Errorf("expected \"record not found error\"")
 	}
 }

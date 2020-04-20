@@ -44,8 +44,8 @@ func (db *DB) AddRecipe(recipe *Recipe) {
 	db.Create(recipe)
 }
 
-func (db *DB) GetRecipeByID(id int) *Recipe {
+func (db *DB) GetRecipeByID(id int) (Recipe, error) {
 	var recipe Recipe
-	db.First(&recipe, id)
-	return &recipe
+	err := db.First(&recipe, id).Error
+	return recipe, err
 }
