@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -24,8 +23,6 @@ import (
 
 var (
 	testApp appContext
-
-	pgURL *url.URL
 )
 
 func TestMain(m *testing.M) {
@@ -36,7 +33,6 @@ func TestMain(m *testing.M) {
 	testApp.router = router.NewRouter()
 	testApp.setupRouter()
 
-	// Many thanks to https://github.com/johanbrandhorst/grpc-postgres/blob/2b12f7a2b44623efcbc627b896f242da0c7462d6/users/users_test.go#L29.
 	code := 0
 	defer func() {
 		os.Exit(code)
