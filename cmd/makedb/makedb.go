@@ -18,5 +18,5 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	database.BuildDatabase("", "", "", "", 5432, *debug)
+	database.BuildDatabase("", "", "", "", 5432)
 }

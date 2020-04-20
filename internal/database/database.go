@@ -4,10 +4,11 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/postgres" // imported but not used
 	"github.com/rs/zerolog/log"
 )
 
+// DB is a wrapper for a gorm.DB object.
 type DB struct {
 	*gorm.DB
 }
@@ -30,8 +31,13 @@ func InitializeDatabaseConnection(dbname, user, password, host string, port int,
 	return &DB{db}
 }
 
-func BuildDatabase(dbname, user, password, host string, port int, debug bool) {
+// BuildDatabase creates tables for each modeled entity.
+func BuildDatabase(dbname, user, password, host string, port int) {
+	log.Info().Msg("Building database")
+
 	db := InitializeDatabaseConnection(dbname, user, password, host, port, false)
+	defer db.Close()
+
 	db.createTables()
 }
 
@@ -40,10 +46,12 @@ func (db *DB) createTables() {
 	db.DB.AutoMigrate(&TextInstruction{})
 }
 
+// AddRecipe adds an entry in the recipes table using `recipe`.
 func (db *DB) AddRecipe(recipe *Recipe) {
 	db.Create(recipe)
 }
 
+// GetRecipeByID retrieves an entry in recipes by ID, and returns an error if no such entry exists.
 func (db *DB) GetRecipeByID(id int) (Recipe, error) {
 	var recipe Recipe
 	err := db.First(&recipe, id).Error
