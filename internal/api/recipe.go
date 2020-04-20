@@ -11,13 +11,13 @@ import (
 )
 
 type getRecipeResponse struct {
-	RecipeID    int         `json:"recipe_id"`
-	Name        string      `json:"name"`
-	Servings    int         `json:"servings"`
-	Ingredients interface{} `json:"ingredients"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	Owner       string      `json:"owner"`
+	RecipeID    int            `json:"recipe_id"`
+	Name        string         `json:"name"`
+	Servings    int            `json:"servings"`
+	Ingredients map[string]int `json:"ingredients"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	Owner       string         `json:"owner"`
 }
 
 func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {

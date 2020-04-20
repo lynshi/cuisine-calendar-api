@@ -89,8 +89,8 @@ func TestGetRecipe(t *testing.T) {
 	name := "test recipe item"
 	servings := 2
 	ingredients := json.RawMessage(`{"salt": 1}`)
-	created := time.Now()
-	updated := time.Now()
+	created := time.Now().Round(time.Microsecond)
+	updated := time.Now().Round(time.Microsecond)
 	owner := "me"
 	permissions := "everyone"
 
@@ -115,9 +115,7 @@ func TestGetRecipe(t *testing.T) {
 	checkResponseCode(t, http.StatusOK, response.Code)
 
 	var expectedIngredients map[string]int
-	expectedIngredients, err = parseIngredientsJSONB(
-		&postgres.Jsonb{RawMessage: ingredients},
-	)
+	expectedIngredients, err = parseIngredientsJSONB(&dbItem.Ingredients)
 
 	if err != nil {
 		t.Fatal(err)
@@ -139,10 +137,10 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if cmp.Equal(result, expected) {
+	if !cmp.Equal(expected, result) {
 		t.Errorf(
-			"handler returned unexpected body: got %v want %v",
-			result, expected,
+			"handler returned unexpected body: want %+v got %+v",
+			expected, result,
 		)
 	}
 }
