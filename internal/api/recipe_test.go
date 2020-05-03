@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/lynshi/cuisine-calendar-api/internal/database"
+	"github.com/lynshi/cuisine-calendar-api/internal/models"
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
@@ -78,7 +79,7 @@ func TestMain(m *testing.M) {
 		DB: gdb,
 	}
 
-	testApp.db.AutoMigrate(&database.Recipe{})
+	testApp.db.AutoMigrate(&models.Recipe{})
 
 	code = m.Run()
 }
@@ -87,13 +88,13 @@ func TestGetRecipe(t *testing.T) {
 	id := 1
 	name := "test recipe item"
 	servings := 2
-	ingredients := json.RawMessage(`{"salt": 1}`)
+	ingredients := json.RawMessage(`{"salt": "1 tbsp"}`)
 	created := time.Now().Round(time.Microsecond)
 	updated := time.Now().Round(time.Microsecond)
 	owner := "me"
 	permissions := "everyone"
 
-	dbItem := database.Recipe{
+	dbItem := models.Recipe{
 		ID:          id,
 		Name:        name,
 		Servings:    servings,
@@ -105,23 +106,23 @@ func TestGetRecipe(t *testing.T) {
 	}
 	testApp.db.Create(&dbItem)
 
-	req, err := http.NewRequest("GET", "/recipe/1", nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("/getRecipe?id=%d", id), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusOK, response.Code)
+	checkResponseCode(t, http.StatusOK, response)
 
-	var expectedIngredients map[string]int
+	var expectedIngredients map[string]string
 	expectedIngredients, err = parseIngredientsJSONB(&dbItem.Ingredients)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result := getRecipeResponse{}
-	expected := getRecipeResponse{
+	result := models.GetRecipeResponse{}
+	expected := models.GetRecipeResponse{
 		RecipeID:    id,
 		Name:        name,
 		Ingredients: expectedIngredients,
@@ -131,7 +132,8 @@ func TestGetRecipe(t *testing.T) {
 		Owner:       owner,
 	}
 
-	err = json.Unmarshal(response.Body.Bytes(), &result)
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,21 +147,21 @@ func TestGetRecipe(t *testing.T) {
 }
 
 func TestGetRecipeNonexistentID(t *testing.T) {
-	req, err := http.NewRequest("GET", "/recipe/42", nil)
+	req, err := http.NewRequest("GET", "/getRecipe?id=42", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusInternalServerError, response.Code)
+	checkResponseCode(t, http.StatusInternalServerError, response)
 }
 
 func TestGetRecipeStringId(t *testing.T) {
-	req, err := http.NewRequest("GET", "/recipe/fail", nil)
+	req, err := http.NewRequest("GET", "/getRecipe?id=fail", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusBadRequest, response.Code)
+	checkResponseCode(t, http.StatusBadRequest, response)
 }

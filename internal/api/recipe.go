@@ -4,33 +4,30 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/jinzhu/gorm/dialects/postgres"
 
+	"github.com/lynshi/cuisine-calendar-api/internal/models"
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
-type getRecipeResponse struct {
-	RecipeID    int            `json:"recipe_id"`
-	Name        string         `json:"name"`
-	Servings    int            `json:"servings"`
-	Ingredients map[string]int `json:"ingredients"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	Owner       string         `json:"owner"`
-}
-
 func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
-	params := router.GetParams(r)
+	params := router.GetURLParams(r)
 
-	recipeID, err := strconv.Atoi(router.GetParamByName(&params, "recipeId"))
+	idString, err := router.GetURLParamByName(&params, "id")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	var response getRecipeResponse
+	var recipeID int
+	recipeID, err = strconv.Atoi(idString)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var response models.GetRecipeResponse
 	response, err = app.retrieveRecipeByID(recipeID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err)
@@ -40,19 +37,19 @@ func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, response)
 }
 
-func (app *appContext) retrieveRecipeByID(id int) (getRecipeResponse, error) {
+func (app *appContext) retrieveRecipeByID(id int) (models.GetRecipeResponse, error) {
 	recipe, err := app.db.GetRecipeByID(id)
 	if err != nil {
-		return getRecipeResponse{}, err
+		return models.GetRecipeResponse{}, err
 	}
 
-	var ingredients map[string]int
+	var ingredients map[string]string
 	ingredients, err = parseIngredientsJSONB(&recipe.Ingredients)
 	if err != nil {
-		return getRecipeResponse{}, err
+		return models.GetRecipeResponse{}, err
 	}
 
-	response := getRecipeResponse{
+	response := models.GetRecipeResponse{
 		RecipeID:    recipe.ID,
 		Name:        recipe.Name,
 		Servings:    recipe.Servings,
@@ -65,8 +62,47 @@ func (app *appContext) retrieveRecipeByID(id int) (getRecipeResponse, error) {
 	return response, nil
 }
 
-func parseIngredientsJSONB(jsonb *postgres.Jsonb) (map[string]int, error) {
-	var ingredients map[string]int
+func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var putRecipeRequest models.PutRecipeRequest
+	err := decoder.Decode(&putRecipeRequest)
+
+	if err != nil {
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	var recipe models.Recipe
+	if putRecipeRequest.ID == nil {
+		recipe, err = app.db.GetRecipeByID(*putRecipeRequest.ID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	recipe.Name = putRecipeRequest.Name
+	recipe.Servings = putRecipeRequest.Servings
+	recipe.CreatedAt = putRecipeRequest.CreatedAt
+	recipe.UpdatedAt = putRecipeRequest.UpdatedAt
+
+	var ingredients []byte
+	ingredients, err = json.Marshal(putRecipeRequest.Ingredients)
+	recipe.Ingredients = postgres.Jsonb{RawMessage: ingredients}
+
+	app.db.PutRecipe(&recipe)
+
+	response := models.PutRecipeResponse{
+		RecipeID: recipe.ID,
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}
+
+func parseIngredientsJSONB(jsonb *postgres.Jsonb) (map[string]string, error) {
+	var ingredients map[string]string
 	err := json.Unmarshal(jsonb.RawMessage, &ingredients)
 	return ingredients, err
 }

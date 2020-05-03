@@ -14,6 +14,8 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/lynshi/cuisine-calendar-api/internal/models"
 )
 
 var (
@@ -80,8 +82,8 @@ var tableExistsTests = []struct {
 	in   interface{}
 	out  bool
 }{
-	{"Recipe table", &Recipe{}, true},
-	{"TextInstruction table", &TextInstruction{}, true},
+	{"Recipe table", &models.Recipe{}, true},
+	{"TextInstruction table", &models.TextInstruction{}, true},
 }
 
 func TestTablesCreated(t *testing.T) {
@@ -98,13 +100,13 @@ var (
 	recipeID          = 5
 	recipeName        = "database test recipe item"
 	recipeServings    = 3
-	recipeIngredients = json.RawMessage(`{"salt": 1}`)
+	recipeIngredients = json.RawMessage(`{"salt": "1 tbsp"}`)
 	recipeCreated     = time.Now().Round(time.Microsecond)
 	recipeUpdated     = time.Now().Round(time.Microsecond)
 	recipeOwner       = "me"
 	recipePermissions = "everyone"
 
-	recipe = Recipe{
+	recipe = models.Recipe{
 		ID:          recipeID,
 		Name:        recipeName,
 		Servings:    recipeServings,
@@ -116,10 +118,10 @@ var (
 	}
 )
 
-func TestAddRecipe(t *testing.T) {
-	testDB.AddRecipe(&recipe)
+func TestPutRecipe(t *testing.T) {
+	testDB.PutRecipe(&recipe)
 
-	var result Recipe
+	var result models.Recipe
 	testDB.Raw("SELECT * FROM recipes WHERE id = ?", recipeID).Scan(&result)
 
 	if !cmp.Equal(recipe, result) {
