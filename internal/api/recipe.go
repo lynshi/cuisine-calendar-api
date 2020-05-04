@@ -66,16 +66,13 @@ func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var putRecipeRequest models.PutRecipeRequest
 	err := decoder.Decode(&putRecipeRequest)
-
 	if err != nil {
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err)
-			return
-		}
+		respondWithError(w, http.StatusInternalServerError, err)
+		return
 	}
 
 	var recipe models.Recipe
-	if putRecipeRequest.ID == nil {
+	if putRecipeRequest.ID != nil {
 		recipe, err = app.db.GetRecipeByID(*putRecipeRequest.ID)
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, err)

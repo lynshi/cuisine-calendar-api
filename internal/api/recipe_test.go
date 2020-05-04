@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -85,7 +86,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestGetRecipe(t *testing.T) {
-	id := 1
+	id := 103
 	name := "test recipe item"
 	servings := 2
 	ingredients := json.RawMessage(`{"salt": "1 tbsp"}`)
@@ -164,4 +165,74 @@ func TestGetRecipeStringId(t *testing.T) {
 
 	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusBadRequest, response)
+}
+
+func TestPutRecipeWithoutID(t *testing.T) {
+	name := "test recipe item"
+	servings := 2
+	ingredients := map[string]string{
+		"salt": "10 tbsp",
+	}
+	created := time.Now().Round(time.Microsecond)
+	updated := time.Now().Round(time.Microsecond)
+
+	putRecipeRequest := models.PutRecipeRequest{
+		Name:        name,
+		Servings:    servings,
+		Ingredients: ingredients,
+		CreatedAt:   created,
+		UpdatedAt:   updated,
+	}
+
+	jsonStr, err := json.Marshal(putRecipeRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var req *http.Request
+	req, err = http.NewRequest("POST", "/putRecipe", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusOK, response)
+
+	var result models.PutRecipeResponse
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var recipe models.Recipe
+	recipe, err = testApp.db.GetRecipeByID(result.RecipeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if name != recipe.Name {
+		t.Errorf("expected recipe name %s got %s", name, recipe.Name)
+	}
+
+	if servings != recipe.Servings {
+		t.Errorf("expected recipe servings %d got %d", servings, recipe.Servings)
+	}
+
+	var parsedIngredients map[string]string
+	parsedIngredients, err = parseIngredientsJSONB(&recipe.Ingredients)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(ingredients, parsedIngredients) {
+		t.Errorf("expected recipe ingredients %v got %v", ingredients, parsedIngredients)
+	}
+
+	if !cmp.Equal(created, recipe.CreatedAt) {
+		t.Errorf("expected recipe created at %v got %v", created, recipe.CreatedAt)
+	}
+
+	if !cmp.Equal(updated, recipe.UpdatedAt) {
+		t.Errorf("expected recipe updated at %v got %v", updated, recipe.UpdatedAt)
+	}
 }
