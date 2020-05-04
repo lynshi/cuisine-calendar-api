@@ -173,7 +173,6 @@ func TestPutRecipeWithoutID(t *testing.T) {
 	ingredients := map[string]string{
 		"salt": "10 tbsp",
 	}
-	timestamp := time.Now().Round(time.Microsecond)
 
 	putRecipeRequest := models.PutRecipeRequest{
 		Name:        name,
@@ -224,9 +223,6 @@ func TestPutRecipeWithoutID(t *testing.T) {
 	if !cmp.Equal(ingredients, parsedIngredients) {
 		t.Errorf("expected recipe ingredients %v got %v", ingredients, parsedIngredients)
 	}
-
-	checkTimestampOccursAfter(t, timestamp, recipe.CreatedAt)
-	checkTimestampOccursAfter(t, timestamp, recipe.UpdatedAt)
 }
 
 func TestPutRecipeUpdatesExisting(t *testing.T) {
@@ -235,7 +231,6 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 	ingredients := map[string]string{
 		"salt": "5 tbsp",
 	}
-	created := time.Now().Round(time.Microsecond)
 
 	putRecipeRequest := models.PutRecipeRequest{
 		Name:        name,
@@ -271,7 +266,6 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 	ingredients = map[string]string{
 		"salt": "not enough",
 	}
-	updated := time.Now().Round(time.Microsecond)
 
 	putRecipeRequest = models.PutRecipeRequest{
 		ID:          &recipeID,
@@ -315,10 +309,6 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 	if !cmp.Equal(ingredients, parsedIngredients) {
 		t.Errorf("expected recipe ingredients %v got %v", ingredients, parsedIngredients)
 	}
-
-	checkTimestampOccursAfter(t, created, recipe.CreatedAt)
-	checkTimestampOccursAfter(t, updated, recipe.UpdatedAt)
-	checkTimestampOccursAfter(t, recipe.CreatedAt, recipe.UpdatedAt)
 }
 
 func TestPutRecipeMakesNewID(t *testing.T) {
