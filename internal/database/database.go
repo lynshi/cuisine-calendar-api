@@ -48,9 +48,14 @@ func (db *DB) createTables() {
 	db.DB.AutoMigrate(&models.TextInstruction{})
 }
 
-// PutRecipe adds an entry in the recipes table using `recipe`.
-func (db *DB) PutRecipe(recipe *models.Recipe) {
+// AddRecipe adds an entry in the recipes table using `recipe`.
+func (db *DB) AddRecipe(recipe *models.Recipe) {
 	db.Create(recipe)
+}
+
+// UpdateRecipe updates an existing recipe.
+func (db *DB) UpdateRecipe(recipe *models.Recipe) {
+	db.Save(recipe)
 }
 
 // GetRecipeByID retrieves an entry in recipes by ID, and returns an error if no such entry exists.

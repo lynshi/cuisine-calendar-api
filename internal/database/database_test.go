@@ -118,8 +118,8 @@ var (
 	}
 )
 
-func TestPutRecipe(t *testing.T) {
-	testDB.PutRecipe(&recipe)
+func TestAddRecipe(t *testing.T) {
+	testDB.AddRecipe(&recipe)
 
 	var result models.Recipe
 	testDB.Raw("SELECT * FROM recipes WHERE id = ?", recipeID).Scan(&result)

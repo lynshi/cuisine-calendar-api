@@ -43,8 +43,6 @@ type PutRecipeRequest struct {
 	Name        string            `json:"name"`
 	Servings    int               `json:"servings"`
 	Ingredients map[string]string `json:"ingredients"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	UpdatedAt   time.Time         `json:"updatedAt"`
 }
 
 // PutRecipeResponse models a response to a PutRecipe request.

@@ -71,8 +71,10 @@ func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isNewRecipe := putRecipeRequest.ID == nil
+
 	var recipe models.Recipe
-	if putRecipeRequest.ID != nil {
+	if !isNewRecipe {
 		recipe, err = app.db.GetRecipeByID(*putRecipeRequest.ID)
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, err)
@@ -82,14 +84,16 @@ func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
 
 	recipe.Name = putRecipeRequest.Name
 	recipe.Servings = putRecipeRequest.Servings
-	recipe.CreatedAt = putRecipeRequest.CreatedAt
-	recipe.UpdatedAt = putRecipeRequest.UpdatedAt
 
 	var ingredients []byte
 	ingredients, err = json.Marshal(putRecipeRequest.Ingredients)
 	recipe.Ingredients = postgres.Jsonb{RawMessage: ingredients}
 
-	app.db.PutRecipe(&recipe)
+	if isNewRecipe {
+		app.db.AddRecipe(&recipe)
+	} else {
+		app.db.UpdateRecipe(&recipe)
+	}
 
 	response := models.PutRecipeResponse{
 		RecipeID: recipe.ID,
