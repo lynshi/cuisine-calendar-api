@@ -38,5 +38,6 @@ func (app *appContext) setupRouter() {
 	log.Info().Msg("Initializing router and adding handler functions")
 
 	commonHandlers := alice.New(loggingHandler)
-	app.router.Get("/recipe/:recipeId", commonHandlers.ThenFunc(app.getRecipe))
+	app.router.Get("/getRecipe", commonHandlers.ThenFunc(app.getRecipe))
+	app.router.Post("/putRecipe", commonHandlers.ThenFunc(app.putRecipe))
 }

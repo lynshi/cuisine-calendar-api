@@ -6,6 +6,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // imported but not used
 	"github.com/rs/zerolog/log"
+
+	"github.com/lynshi/cuisine-calendar-api/internal/models"
 )
 
 // DB is a wrapper for a gorm.DB object.
@@ -42,18 +44,23 @@ func BuildDatabase(dbname, user, password, host string, port int) {
 }
 
 func (db *DB) createTables() {
-	db.DB.AutoMigrate(&Recipe{})
-	db.DB.AutoMigrate(&TextInstruction{})
+	db.DB.AutoMigrate(&models.Recipe{})
+	db.DB.AutoMigrate(&models.TextInstruction{})
 }
 
 // AddRecipe adds an entry in the recipes table using `recipe`.
-func (db *DB) AddRecipe(recipe *Recipe) {
+func (db *DB) AddRecipe(recipe *models.Recipe) {
 	db.Create(recipe)
 }
 
+// UpdateRecipe updates an existing recipe.
+func (db *DB) UpdateRecipe(recipe *models.Recipe) {
+	db.Save(recipe)
+}
+
 // GetRecipeByID retrieves an entry in recipes by ID, and returns an error if no such entry exists.
-func (db *DB) GetRecipeByID(id int) (Recipe, error) {
-	var recipe Recipe
+func (db *DB) GetRecipeByID(id int) (models.Recipe, error) {
+	var recipe models.Recipe
 	err := db.First(&recipe, id).Error
 	return recipe, err
 }

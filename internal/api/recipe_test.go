@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/lynshi/cuisine-calendar-api/internal/database"
+	"github.com/lynshi/cuisine-calendar-api/internal/models"
 	"github.com/lynshi/cuisine-calendar-api/internal/router"
 )
 
@@ -78,22 +80,22 @@ func TestMain(m *testing.M) {
 		DB: gdb,
 	}
 
-	testApp.db.AutoMigrate(&database.Recipe{})
+	testApp.db.AutoMigrate(&models.Recipe{})
 
 	code = m.Run()
 }
 
 func TestGetRecipe(t *testing.T) {
-	id := 1
+	id := 103
 	name := "test recipe item"
 	servings := 2
-	ingredients := json.RawMessage(`{"salt": 1}`)
+	ingredients := json.RawMessage(`{"salt": "1 tbsp"}`)
 	created := time.Now().Round(time.Microsecond)
 	updated := time.Now().Round(time.Microsecond)
 	owner := "me"
 	permissions := "everyone"
 
-	dbItem := database.Recipe{
+	dbItem := models.Recipe{
 		ID:          id,
 		Name:        name,
 		Servings:    servings,
@@ -105,33 +107,34 @@ func TestGetRecipe(t *testing.T) {
 	}
 	testApp.db.Create(&dbItem)
 
-	req, err := http.NewRequest("GET", "/recipe/1", nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("/getRecipe?id=%d", id), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusOK, response.Code)
+	checkResponseCode(t, http.StatusOK, response)
 
-	var expectedIngredients map[string]int
+	var expectedIngredients map[string]string
 	expectedIngredients, err = parseIngredientsJSONB(&dbItem.Ingredients)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result := getRecipeResponse{}
-	expected := getRecipeResponse{
-		RecipeID:    id,
-		Name:        name,
+	result := models.GetRecipeResponse{}
+	expected := models.GetRecipeResponse{
+		RecipeID:    dbItem.ID,
+		Name:        dbItem.Name,
 		Ingredients: expectedIngredients,
-		Servings:    servings,
-		CreatedAt:   created,
-		UpdatedAt:   updated,
+		Servings:    dbItem.Servings,
+		CreatedAt:   dbItem.CreatedAt,
+		UpdatedAt:   dbItem.UpdatedAt,
 		Owner:       owner,
 	}
 
-	err = json.Unmarshal(response.Body.Bytes(), &result)
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,21 +148,220 @@ func TestGetRecipe(t *testing.T) {
 }
 
 func TestGetRecipeNonexistentID(t *testing.T) {
-	req, err := http.NewRequest("GET", "/recipe/42", nil)
+	req, err := http.NewRequest("GET", "/getRecipe?id=42", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusInternalServerError, response.Code)
+	checkResponseCode(t, http.StatusInternalServerError, response)
 }
 
 func TestGetRecipeStringId(t *testing.T) {
-	req, err := http.NewRequest("GET", "/recipe/fail", nil)
+	req, err := http.NewRequest("GET", "/getRecipe?id=fail", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	response := executeRequest(testApp.router, req)
-	checkResponseCode(t, http.StatusBadRequest, response.Code)
+	checkResponseCode(t, http.StatusBadRequest, response)
+}
+
+func TestPutRecipeWithoutID(t *testing.T) {
+	name := "test recipe item"
+	servings := 2
+	ingredients := map[string]string{
+		"salt": "10 tbsp",
+	}
+
+	putRecipeRequest := models.PutRecipeRequest{
+		Name:        name,
+		Servings:    servings,
+		Ingredients: ingredients,
+	}
+
+	jsonStr, err := json.Marshal(putRecipeRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var req *http.Request
+	req, err = http.NewRequest("POST", "/putRecipe", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusOK, response)
+
+	var result models.PutRecipeResponse
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var recipe models.Recipe
+	recipe, err = testApp.db.GetRecipeByID(result.RecipeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if name != recipe.Name {
+		t.Errorf("expected recipe name %s got %s", name, recipe.Name)
+	}
+
+	if servings != recipe.Servings {
+		t.Errorf("expected recipe servings %d got %d", servings, recipe.Servings)
+	}
+
+	var parsedIngredients map[string]string
+	parsedIngredients, err = parseIngredientsJSONB(&recipe.Ingredients)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(ingredients, parsedIngredients) {
+		t.Errorf("expected recipe ingredients %v got %v", ingredients, parsedIngredients)
+	}
+}
+
+func TestPutRecipeUpdatesExisting(t *testing.T) {
+	name := "test recipe item 34"
+	servings := 8
+	ingredients := map[string]string{
+		"salt": "5 tbsp",
+	}
+
+	putRecipeRequest := models.PutRecipeRequest{
+		Name:        name,
+		Servings:    servings,
+		Ingredients: ingredients,
+	}
+
+	jsonStr, err := json.Marshal(putRecipeRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var req *http.Request
+	req, err = http.NewRequest("POST", "/putRecipe", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusOK, response)
+
+	var result models.PutRecipeResponse
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recipeID := result.RecipeID
+
+	name = "totally new name"
+	servings = 21
+	ingredients = map[string]string{
+		"salt": "not enough",
+	}
+
+	putRecipeRequest = models.PutRecipeRequest{
+		ID:          &recipeID,
+		Name:        name,
+		Servings:    servings,
+		Ingredients: ingredients,
+	}
+
+	jsonStr, err = json.Marshal(putRecipeRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err = http.NewRequest("POST", "/putRecipe", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response = executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusOK, response)
+
+	var recipe models.Recipe
+	recipe, err = testApp.db.GetRecipeByID(result.RecipeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if name != recipe.Name {
+		t.Errorf("expected recipe name %s got %s", name, recipe.Name)
+	}
+
+	if servings != recipe.Servings {
+		t.Errorf("expected recipe servings %d got %d", servings, recipe.Servings)
+	}
+
+	var parsedIngredients map[string]string
+	parsedIngredients, err = parseIngredientsJSONB(&recipe.Ingredients)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(ingredients, parsedIngredients) {
+		t.Errorf("expected recipe ingredients %v got %v", ingredients, parsedIngredients)
+	}
+}
+
+func TestPutRecipeMakesNewID(t *testing.T) {
+	name := "test recipe item"
+	servings := 2
+	ingredients := map[string]string{
+		"salt": "10 tbsp",
+	}
+
+	putRecipeRequest := models.PutRecipeRequest{
+		Name:        name,
+		Servings:    servings,
+		Ingredients: ingredients,
+	}
+
+	jsonStr, err := json.Marshal(putRecipeRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var req *http.Request
+	req, err = http.NewRequest("POST", "/putRecipe", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusOK, response)
+
+	var result models.PutRecipeResponse
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstID := result.RecipeID
+
+	req, err = http.NewRequest("POST", "/putRecipe", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response = executeRequest(testApp.router, req)
+	checkResponseCode(t, http.StatusOK, response)
+
+	decoder = json.NewDecoder(response.Body)
+	err = decoder.Decode(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if firstID == result.RecipeID {
+		t.Errorf("recipe ID is the same for both requests")
+	}
 }
