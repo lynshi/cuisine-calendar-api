@@ -80,6 +80,8 @@ func createRecipeChannel() <-chan models.Recipe {
 	recipeChannel := make(chan models.Recipe)
 
 	go func() {
+		defer close(recipeChannel)
+
 		recipeID := 5
 		recipeName := "database test recipe item"
 		recipeServings := 3
