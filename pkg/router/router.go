@@ -13,8 +13,8 @@ type Router struct {
 	*httprouter.Router
 }
 
-// NewRouter returns a new wrapped router instance.
-func NewRouter() *Router {
+// New returns a new wrapped router instance.
+func New() *Router {
 	return &Router{httprouter.New()}
 }
 
