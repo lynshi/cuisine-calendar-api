@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lynshi/cuisine-calendar-api/internal/router"
+	"github.com/lynshi/cuisine-calendar-api/pkg/router"
 )
 
 func executeRequest(r *router.Router, req *http.Request) *httptest.ResponseRecorder {

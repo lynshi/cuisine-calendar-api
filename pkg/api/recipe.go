@@ -2,20 +2,24 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/pkg/errors"
 
-	"github.com/lynshi/cuisine-calendar-api/internal/models"
-	"github.com/lynshi/cuisine-calendar-api/internal/router"
+	"github.com/lynshi/cuisine-calendar-api/internal/apimodels"
+	"github.com/lynshi/cuisine-calendar-api/internal/dbmodels"
+	"github.com/lynshi/cuisine-calendar-api/pkg/router"
 )
 
-func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
+func (app *App) getRecipe(w http.ResponseWriter, r *http.Request) {
 	params := router.GetURLParams(r)
 
 	idString, err := router.GetURLParamByName(&params, "id")
 	if err != nil {
+		err = errors.Wrap(err, "could not retrieve id from URL params")
 		respondWithError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -23,13 +27,15 @@ func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipeID int
 	recipeID, err = strconv.Atoi(idString)
 	if err != nil {
+		err = errors.Wrap(err, "could not convert id parameter to int")
 		respondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	var response models.GetRecipeResponse
+	var response apimodels.GetRecipeResponse
 	response, err = app.retrieveRecipeByID(recipeID)
 	if err != nil {
+		err = errors.Wrap(err, "could not retrieve recipe by id")
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -37,19 +43,21 @@ func (app *appContext) getRecipe(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, response)
 }
 
-func (app *appContext) retrieveRecipeByID(id int) (models.GetRecipeResponse, error) {
-	recipe, err := app.db.GetRecipeByID(id)
+func (app *App) retrieveRecipeByID(id int) (apimodels.GetRecipeResponse, error) {
+	recipe, err := dbmodels.GetRecipeByID(app.db, id)
 	if err != nil {
-		return models.GetRecipeResponse{}, err
+		err = errors.Wrap(err, fmt.Sprintf("recipe with %d could not be found", id))
+		return apimodels.GetRecipeResponse{}, err
 	}
 
 	var ingredients map[string]string
 	ingredients, err = parseIngredientsJSONB(&recipe.Ingredients)
 	if err != nil {
-		return models.GetRecipeResponse{}, err
+		err = errors.Wrap(err, "ingredients could not be parsed")
+		return apimodels.GetRecipeResponse{}, err
 	}
 
-	response := models.GetRecipeResponse{
+	response := apimodels.GetRecipeResponse{
 		RecipeID:    recipe.ID,
 		Name:        recipe.Name,
 		Servings:    recipe.Servings,
@@ -62,21 +70,23 @@ func (app *appContext) retrieveRecipeByID(id int) (models.GetRecipeResponse, err
 	return response, nil
 }
 
-func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
+func (app *App) putRecipe(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var putRecipeRequest models.PutRecipeRequest
+	var putRecipeRequest apimodels.PutRecipeRequest
 	err := decoder.Decode(&putRecipeRequest)
 	if err != nil {
+		err = errors.Wrap(err, "could not decode put request")
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	isNewRecipe := putRecipeRequest.ID == nil
 
-	var recipe models.Recipe
+	var recipe dbmodels.Recipe
 	if !isNewRecipe {
-		recipe, err = app.db.GetRecipeByID(*putRecipeRequest.ID)
+		recipe, err = dbmodels.GetRecipeByID(app.db, *putRecipeRequest.ID)
 		if err != nil {
+			err = errors.Wrap(err, "could not retrieve recipe")
 			respondWithError(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -90,12 +100,12 @@ func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
 	recipe.Ingredients = postgres.Jsonb{RawMessage: ingredients}
 
 	if isNewRecipe {
-		app.db.AddRecipe(&recipe)
+		dbmodels.AddRecipe(app.db, &recipe)
 	} else {
-		app.db.UpdateRecipe(&recipe)
+		dbmodels.UpdateRecipe(app.db, &recipe)
 	}
 
-	response := models.PutRecipeResponse{
+	response := apimodels.PutRecipeResponse{
 		RecipeID: recipe.ID,
 	}
 
@@ -105,5 +115,9 @@ func (app *appContext) putRecipe(w http.ResponseWriter, r *http.Request) {
 func parseIngredientsJSONB(jsonb *postgres.Jsonb) (map[string]string, error) {
 	var ingredients map[string]string
 	err := json.Unmarshal(jsonb.RawMessage, &ingredients)
+	if err != nil {
+		err = errors.Wrap(err, "error parsing ingredients from jsonb")
+	}
+
 	return ingredients, err
 }

@@ -7,32 +7,30 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/ory/dockertest"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/lynshi/cuisine-calendar-api/internal/database"
-	"github.com/lynshi/cuisine-calendar-api/internal/models"
-	"github.com/lynshi/cuisine-calendar-api/internal/router"
+	"github.com/lynshi/cuisine-calendar-api/internal/apimodels"
+	"github.com/lynshi/cuisine-calendar-api/internal/dbmodels"
+	"github.com/lynshi/cuisine-calendar-api/internal/logsetup"	
+	"github.com/lynshi/cuisine-calendar-api/pkg/database"
+	"github.com/lynshi/cuisine-calendar-api/pkg/router"
 )
 
 var (
-	testApp appContext
+	testApp *App
 )
 
 func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	logsetup.SetupZerolog(true)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
-	testApp.debug = true
-	testApp.router = router.NewRouter()
-	testApp.setupRouter()
 
 	code := 0
 	defer func() {
@@ -70,17 +68,28 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	var gdb *gorm.DB
-	gdb, err = gorm.Open("postgres", db)
+	// Database is up, so we can connect using our function instead.
+	db.Close()
+
+	var port int
+	port, err = strconv.Atoi(resource.GetPort("5432/tcp"))
 	if err != nil {
-		log.Fatal().Err(err).Msg("could not open connection from Gorm")
+		log.Fatal().Err(err).Msg("could not convert port to int")
 	}
 
-	testApp.db = &database.DB{
-		DB: gdb,
+	var testDB *database.DB
+	testDB, err = database.New(dbname, "postgres", "secret", "localhost", port, false)
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not create database")
 	}
+	defer testDB.Close()
 
-	testApp.db.AutoMigrate(&models.Recipe{})
+	dbmodels.CreateRecipeTable(testDB)
+
+	router := router.New()
+
+	testApp = New(testDB, router)
+	testApp.SetupRouter()
 
 	code = m.Run()
 }
@@ -95,7 +104,7 @@ func TestGetRecipe(t *testing.T) {
 	owner := "me"
 	permissions := "everyone"
 
-	dbItem := models.Recipe{
+	dbItem := dbmodels.Recipe{
 		ID:          id,
 		Name:        name,
 		Servings:    servings,
@@ -105,7 +114,7 @@ func TestGetRecipe(t *testing.T) {
 		Owner:       owner,
 		Permissions: permissions,
 	}
-	testApp.db.Create(&dbItem)
+	dbmodels.AddRecipe(testApp.db, &dbItem)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("/getRecipe?id=%d", id), nil)
 	if err != nil {
@@ -122,8 +131,8 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := models.GetRecipeResponse{}
-	expected := models.GetRecipeResponse{
+	result := apimodels.GetRecipeResponse{}
+	expected := apimodels.GetRecipeResponse{
 		RecipeID:    dbItem.ID,
 		Name:        dbItem.Name,
 		Ingredients: expectedIngredients,
@@ -174,7 +183,7 @@ func TestPutRecipeWithoutID(t *testing.T) {
 		"salt": "10 tbsp",
 	}
 
-	putRecipeRequest := models.PutRecipeRequest{
+	putRecipeRequest := apimodels.PutRecipeRequest{
 		Name:        name,
 		Servings:    servings,
 		Ingredients: ingredients,
@@ -194,15 +203,15 @@ func TestPutRecipeWithoutID(t *testing.T) {
 	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusOK, response)
 
-	var result models.PutRecipeResponse
+	var result apimodels.PutRecipeResponse
 	decoder := json.NewDecoder(response.Body)
 	err = decoder.Decode(&result)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var recipe models.Recipe
-	recipe, err = testApp.db.GetRecipeByID(result.RecipeID)
+	var recipe dbmodels.Recipe
+	recipe, err = dbmodels.GetRecipeByID(testApp.db, result.RecipeID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +241,7 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 		"salt": "5 tbsp",
 	}
 
-	putRecipeRequest := models.PutRecipeRequest{
+	putRecipeRequest := apimodels.PutRecipeRequest{
 		Name:        name,
 		Servings:    servings,
 		Ingredients: ingredients,
@@ -252,7 +261,7 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusOK, response)
 
-	var result models.PutRecipeResponse
+	var result apimodels.PutRecipeResponse
 	decoder := json.NewDecoder(response.Body)
 	err = decoder.Decode(&result)
 	if err != nil {
@@ -267,7 +276,7 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 		"salt": "not enough",
 	}
 
-	putRecipeRequest = models.PutRecipeRequest{
+	putRecipeRequest = apimodels.PutRecipeRequest{
 		ID:          &recipeID,
 		Name:        name,
 		Servings:    servings,
@@ -287,8 +296,8 @@ func TestPutRecipeUpdatesExisting(t *testing.T) {
 	response = executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusOK, response)
 
-	var recipe models.Recipe
-	recipe, err = testApp.db.GetRecipeByID(result.RecipeID)
+	var recipe dbmodels.Recipe
+	recipe, err = dbmodels.GetRecipeByID(testApp.db, result.RecipeID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +327,7 @@ func TestPutRecipeMakesNewID(t *testing.T) {
 		"salt": "10 tbsp",
 	}
 
-	putRecipeRequest := models.PutRecipeRequest{
+	putRecipeRequest := apimodels.PutRecipeRequest{
 		Name:        name,
 		Servings:    servings,
 		Ingredients: ingredients,
@@ -338,7 +347,7 @@ func TestPutRecipeMakesNewID(t *testing.T) {
 	response := executeRequest(testApp.router, req)
 	checkResponseCode(t, http.StatusOK, response)
 
-	var result models.PutRecipeResponse
+	var result apimodels.PutRecipeResponse
 	decoder := json.NewDecoder(response.Body)
 	err = decoder.Decode(&result)
 	if err != nil {
