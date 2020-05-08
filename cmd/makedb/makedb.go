@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 
-	"github.com/lynshi/cuisine-calendar-api/internal/database"
-	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
+	"github.com/lynshi/cuisine-calendar-api/pkg/database"
+	"github.com/lynshi/cuisine-calendar-api/internal/cmdsetup"
+	"github.com/lynshi/cuisine-calendar-api/internal/dbmodels"
 )
 
 func main() {
@@ -12,11 +15,12 @@ func main() {
 
 	flag.Parse()
 
-	// Default level for this example is info, unless debug flag is present
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if *debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	cmdsetup.SetupZerolog(*debug)
+
+	db, err := database.New("", "", "", "", 5432, true)
+	if err != nil {
+		log.Fatal().Stack().Err(err).Msg("could not connect to database")
 	}
 
-	database.BuildDatabase("", "", "", "", 5432)
+	dbmodels.CreateRecipeTable(db)
 }
