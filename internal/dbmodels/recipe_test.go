@@ -14,15 +14,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	DB "github.com/lynshi/cuisine-calendar-api/pkg/database"
+	"github.com/lynshi/cuisine-calendar-api/internal/logsetup"
+	"github.com/lynshi/cuisine-calendar-api/pkg/database"
 )
 
 var (
-	testDB *DB.DB
+	testDB *database.DB
 )
 
 func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	logsetup.SetupZerolog(true)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	code := 0
@@ -70,7 +71,7 @@ func TestMain(m *testing.M) {
 		log.Fatal().Err(err).Msg("could not convert port to int")
 	}
 
-	testDB, err = DB.New(dbname, "postgres", "secret", "localhost", port, false)
+	testDB, err = database.New(dbname, "postgres", "secret", "localhost", port, false)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not create DB.DB")
 	}

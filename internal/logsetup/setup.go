@@ -1,4 +1,4 @@
-package cmdsetup
+package logsetup
 
 import (
 	"fmt"

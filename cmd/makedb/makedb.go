@@ -6,8 +6,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/lynshi/cuisine-calendar-api/pkg/database"
-	"github.com/lynshi/cuisine-calendar-api/internal/cmdsetup"
 	"github.com/lynshi/cuisine-calendar-api/internal/dbmodels"
+	"github.com/lynshi/cuisine-calendar-api/internal/logsetup"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 
 	flag.Parse()
 
-	cmdsetup.SetupZerolog(*debug)
+	logsetup.SetupZerolog(*debug)
 
 	db, err := database.New("", "", "", "", 5432, true)
 	if err != nil {

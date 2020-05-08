@@ -5,7 +5,7 @@ import (
 
 	"github.com/jinzhu/gorm/dialects/postgres"
 
-	DB "github.com/lynshi/cuisine-calendar-api/pkg/database"
+	"github.com/lynshi/cuisine-calendar-api/pkg/database"
 )
 
 // Recipe models the recipes table.
@@ -21,22 +21,22 @@ type Recipe struct {
 }
 
 // CreateRecipeTable creates the recipe table in the database. 
-func CreateRecipeTable(db *DB.DB) {
+func CreateRecipeTable(db *database.DB) {
 	db.AutoMigrate(&Recipe{})
 }
 
 // AddRecipe adds an entry in the recipes table using `recipe`.
-func AddRecipe(db *DB.DB, recipe *Recipe) {
+func AddRecipe(db *database.DB, recipe *Recipe) {
 	db.Create(recipe)
 }
 
 // UpdateRecipe updates an existing recipe.
-func UpdateRecipe(db *DB.DB, recipe *Recipe) {
+func UpdateRecipe(db *database.DB, recipe *Recipe) {
 	db.Save(recipe)
 }
 
 // GetRecipeByID retrieves an entry in recipes by ID, and returns an error if no such entry exists.
-func GetRecipeByID(db *DB.DB, id int) (Recipe, error) {
+func GetRecipeByID(db *database.DB, id int) (Recipe, error) {
 	var recipe Recipe
 	err := db.First(&recipe, id).Error
 	return recipe, err
