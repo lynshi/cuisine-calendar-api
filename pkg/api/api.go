@@ -9,6 +9,7 @@ import (
 	"github.com/lynshi/cuisine-calendar-api/pkg/router"
 )
 
+// App provides context for running the API server.
 type App struct {
 	db     *database.DB
 	router *router.Router
@@ -22,14 +23,14 @@ func New(db *database.DB, router *router.Router) *App {
 	}
 }
 
-// Runs a server with App, returning an error if it returns.
+// Run starts a server with App, returning an error if it returns.
 func (a *App) Run(address string) error {
 	return http.ListenAndServe(address, a.router)
 }
 
 // SetupRouter adds routes to the app.
-func (app *App) SetupRouter() {
+func (a *App) SetupRouter() {
 	commonHandlers := alice.New(loggingHandler)
-	app.router.Get("/getRecipe", commonHandlers.ThenFunc(app.getRecipe))
-	app.router.Post("/putRecipe", commonHandlers.ThenFunc(app.putRecipe))
+	a.router.Get("/getRecipe", commonHandlers.ThenFunc(a.getRecipe))
+	a.router.Post("/putRecipe", commonHandlers.ThenFunc(a.putRecipe))
 }
