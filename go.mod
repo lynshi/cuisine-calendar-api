@@ -14,6 +14,7 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.6.0 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/rs/zerolog v1.18.0
 	golang.org/x/tools v0.0.0-20200417140056-c07e33ef3290 // indirect
 )
